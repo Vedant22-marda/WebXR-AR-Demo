@@ -62,34 +62,34 @@ async function onSessionStart(session) {
 
 function onSelect() {
   if (reticle.visible) {
-    // Place a marker cube
-    const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+    // Place a smaller cube marker at reticle position
+    const geometry = new THREE.BoxGeometry(0.05, 0.05, 0.05);
     const material = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.setFromMatrixPosition(reticle.matrix);
     scene.add(mesh);
 
-    // Save marker positions
+    // Store the marker position
     measurementPoints.push(mesh.position.clone());
 
-    // If two markers placed, show line and measurement
     if (measurementPoints.length === 2) {
+      // Remove existing line if any
       if (line) scene.remove(line);
 
-      const points = measurementPoints;
-      const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+      // Draw line between two points
+      const lineGeometry = new THREE.BufferGeometry().setFromPoints(measurementPoints);
       const lineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
       line = new THREE.Line(lineGeometry, lineMaterial);
       scene.add(line);
 
-      // Distance in meters (WebXR uses meters)
-      const dist = points[0].distanceTo(points[1]);
+      // Calculate distance in meters
+      const dist = measurementPoints[0].distanceTo(measurementPoints[1]);
       document.getElementById('info').textContent = `Distance: ${dist.toFixed(2)} meters`;
 
-      // Reset points for next measurement
+      // Reset points for new measurement
       measurementPoints = [];
     } else {
-      document.getElementById('info').textContent = `Tap another point to complete measurement`;
+      document.getElementById('info').textContent = 'Tap the second point to measure distance';
     }
   }
 }
