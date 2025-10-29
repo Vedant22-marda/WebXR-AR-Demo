@@ -7,6 +7,7 @@ let hitTestSource = null;
 let localSpace = null;
 
 let measurementPoints = [];
+let meshes = [];
 let line = null;
 
 init();
@@ -33,7 +34,7 @@ function init() {
   });
   document.body.appendChild(button);
 
-  // Reticle to show position on detected surface
+  // Reticle for hit testing
   reticle = new THREE.Mesh(
     new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ color: 0x00ff00 })
@@ -46,12 +47,15 @@ function init() {
   const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
   scene.add(light);
 
-  // Controller for tap/select
+  // Controller for input taps
   controller = renderer.xr.getController(0);
   controller.addEventListener('select', onSelect);
   scene.add(controller);
 
   window.addEventListener('resize', onWindowResize);
+
+  // Initial info message
+  document.getElementById('info').textContent = 'Tap first point on a surface.';
 }
 
 async function onSessionStart(session) {
@@ -62,36 +66,47 @@ async function onSessionStart(session) {
 
 function onSelect() {
   if (reticle.visible) {
-    // Place a smaller cube marker at reticle position
+    if (measurementPoints.length >= 2) {
+      // Reset measurement on third tap
+      clearMeasurement();
+      return;
+    }
+
+    // Place marker cube
     const geometry = new THREE.BoxGeometry(0.05, 0.05, 0.05);
     const material = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.setFromMatrixPosition(reticle.matrix);
     scene.add(mesh);
 
-    // Store the marker position
     measurementPoints.push(mesh.position.clone());
+    meshes.push(mesh);
 
     if (measurementPoints.length === 2) {
-      // Remove existing line if any
+      // Draw line
       if (line) scene.remove(line);
-
-      // Draw line between two points
       const lineGeometry = new THREE.BufferGeometry().setFromPoints(measurementPoints);
       const lineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
       line = new THREE.Line(lineGeometry, lineMaterial);
       scene.add(line);
 
-      // Calculate distance in meters
       const dist = measurementPoints[0].distanceTo(measurementPoints[1]);
-      document.getElementById('info').textContent = `Distance: ${dist.toFixed(2)} meters`;
-
-      // Reset points for new measurement
-      measurementPoints = [];
+      document.getElementById('info').textContent = `Distance: ${dist.toFixed(2)} meters. Tap anywhere to reset.`;
     } else {
-      document.getElementById('info').textContent = 'Tap the second point to measure distance';
+      document.getElementById('info').textContent = 'Tap the second point to measure distance.';
     }
   }
+}
+
+function clearMeasurement() {
+  measurementPoints = [];
+  if (line) {
+    scene.remove(line);
+    line = null;
+  }
+  meshes.forEach(m => scene.remove(m));
+  meshes = [];
+  document.getElementById('info').textContent = 'Tap first point on a surface.';
 }
 
 function onWindowResize() {
